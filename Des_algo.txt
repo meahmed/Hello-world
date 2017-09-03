@@ -1,0 +1,974 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace DesAlgo
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string message,Enc_message,Dec_message;
+            string primary_key;
+            Console.WriteLine("Enter the 4 - digit Pin:");
+            message = Console.ReadLine();
+            int len = message.Length;
+            message = message.PadLeft(16,'0');
+                Console.WriteLine("Enter the Key:(1-16 digits)");
+            primary_key = (Console.ReadLine()).PadLeft(16, '0');
+
+            Console.WriteLine("Encrypting.....");
+            Enc_message = Enc_des(message, primary_key);
+            Console.WriteLine("------------\nEncrypted Message : \n\n" + Enc_message);
+            Console.WriteLine("\nDecrypting.....");
+           Dec_message = Dec_des(Enc_message, primary_key);
+            Console.WriteLine("------------\nDecrypted Message : \n\n" + Dec_message.PadLeft(len, '0'));
+
+            Console.ReadKey();
+        }
+        public static string  Dec_des(string mess, string key)            
+            {
+                int[] permuted_message = new int[64];
+                int[] final_permutation = new int[64];
+
+                // Keys
+                int[][] KCD = new int[17][];
+                for (int i = 0; i < 17; i++)
+                {
+                    KCD[i] = new int[56];
+                }
+                //Key division into two halves and subsequent shifts
+                int[][] C = new int[17][];
+                for (int i = 0; i < 17; i++)
+                {
+                    C[i] = new int[28];
+                }
+                int[][] D = new int[17][];
+                for (int i = 0; i < 17; i++)
+                {
+                    D[i] = new int[28];
+                }
+                //Kns
+                int[][] K = new int[17][];
+                for (int i = 0; i < 17; i++)
+                {
+                    K[i] = new int[48];
+                }
+
+                //Message division 
+                //Ln
+                int[][] L = new int[17][];
+                for (int i = 0; i < 17; i++)
+                {
+                    L[i] = new int[32];
+                }
+                //Rn
+                int[][] R = new int[17][];
+                for (int i = 0; i < 17; i++)
+                {
+                    R[i] = new int[32];
+                }
+
+
+                //permutation of primary_key formula 
+                int[] key_permutation = new int[] { 57, 49, 41, 33, 25, 17, 9,
+                                   1, 58, 50, 42, 34, 26, 18,
+                                   10, 2, 59, 51, 43, 35, 27,           //Converts 64 bit key to 56 bit key 
+                                   19, 11, 3, 60, 52, 44, 36,
+                                   63, 55, 47, 39, 31, 23, 15,
+                                   7, 62, 54, 46, 38, 30, 22,
+                                   14, 6, 61, 53, 45, 37, 29,
+                                   21, 13, 5, 28, 20, 12, 4 };
+
+                //shift sizes
+                int[] key_shift_sizes = new int[] { 0, 1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1 };
+
+
+                //permutation of sub key formula
+                int[] sub_key_permutation = new int[]{
+                                    14, 17, 11, 24, 1, 5,
+                                    3, 28, 15, 6, 21, 10,
+                                    23, 19, 12,  4, 26, 8,
+                                    16, 7, 27, 20, 13, 2,               //Converts 56 bit CnDn to 48 bit Kn
+                                    41, 52, 31, 37, 47, 55,
+                                    30, 40, 51, 45, 33, 48,
+                                    44, 49, 39, 56, 34, 53,
+                                    46, 42, 50, 36, 29, 32 };
+
+                //permutation of message formula
+                int[] message_permutation = new int[]{
+                             58, 50, 42, 34, 26, 18, 10, 2,
+                             60, 52, 44, 36, 28, 20, 12, 4,
+                             62, 54, 46, 38, 30, 22, 14, 6,
+                             64, 56, 48, 40, 32, 24, 16, 8,
+                             57, 49, 41, 33, 25, 17,  9, 1,             //64 bit to 64 bit msg
+                             59, 51, 43, 35, 27, 19, 11, 3,
+                             61, 53, 45, 37, 29, 21, 13, 5,
+                             63, 55, 47, 39, 31, 23, 15, 7 };
+
+                //Final permutation formula
+                int[] end_permutation = new int[]{
+                         40,  8, 48, 16, 56, 24, 64, 32,
+                         39,  7, 47, 15, 55, 23, 63, 31,
+                         38,  6, 46, 14, 54, 22, 62, 30,        //Output is encoded msg
+                         37,  5, 45, 13, 53, 21, 61, 29,
+                         36,  4, 44, 12, 52, 20, 60, 28,
+                         35,  3, 43, 11, 51, 19, 59, 27,
+                         34,  2, 42, 10, 50, 18, 58, 26,
+                         33,  1, 41,  9, 49, 17, 57, 25 };
+
+
+
+                //Conversion of Hex to binary of msg
+                var msg_to_binary = String.Join("", mess.Select(x => Convert.ToString(Convert.ToInt32(x + "", 16), 2).PadLeft(4, '0')));
+                //Conversion to int_Array
+                var msg_binary_toarray = msg_to_binary.Select(c => c - '0').ToArray();
+
+                //Permutation of msg 
+                for (int i = 0; i < 64; i++)
+                {
+                    permuted_message[i] = msg_binary_toarray[message_permutation[i] - 1];
+                }
+            {
+                ////Display Original Message in Binary(64 bits)
+                //Console.WriteLine("Original Message in Binary: ");
+                //for (int i = 0; i < 64; i++)
+                //{
+                //    Console.Write(msg_binary_toarray[i]);
+                //    if ((i + 1) % 8 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //    if ((i + 1) % 32 == 0)
+                //    {
+                //        Console.WriteLine();
+                //    }
+                //}
+
+                ////Display Permuted msg in Binary(64 Bits)
+                //Console.WriteLine("Permuted msg in Binary: ");
+                //for (int i = 0; i < 64; i++)
+                //{
+                //    Console.Write(permuted_message[i]);
+                //    if ((i + 1) % 8 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //    if ((i + 1) % 32 == 0)
+                //    {
+                //        Console.WriteLine();
+                //    }
+                //}
+            }
+                //Conversion of Hex to binary of key
+                var key_to_binary = String.Join("", key.Select(x => Convert.ToString(Convert.ToInt32(x + "", 16), 2).PadLeft(4, '0')));
+                //Conversion to int_Array
+                var key_binary_toarray = key_to_binary.Select(c => c - '0').ToArray();
+
+                //Permutation of key
+                for (int i = 0; i < 56; i++)
+                {
+                    KCD[0][i] = key_binary_toarray[key_permutation[i] - 1];
+                }
+                Console.WriteLine();
+            {
+                ////Display original key in binary(64 Bits)
+                //Console.WriteLine("Original Key in Binary: ");
+                //for (int i = 0; i < 64; i++)
+                //{
+                //    Console.Write(key_binary_toarray[i]);
+                //    if ((i + 1) % 8 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //    if ((i + 1) % 32 == 0)
+                //    {
+                //        Console.WriteLine();
+                //    }
+                //}
+
+                ////Display Permuted key in Binary(56 Bits)
+                //Console.WriteLine("Permuted Key in Binary: ");
+                //for (int i = 0; i < 56; i++)
+                //{
+                //    Console.Write(KCD[0][i]);
+                //    if ((i + 1) % 7 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //    if ((i + 1) % 28 == 0)
+                //    {
+                //        Console.WriteLine();
+                //    }
+                //}
+            }
+                //Key permutations
+                C[0] = KCD[0].Take(KCD[0].Length / 2).ToArray();
+                D[0] = KCD[0].Skip(KCD[0].Length / 2).ToArray();
+            {
+                //Console.WriteLine("Permuted Key Left halve in Binary: ");
+                //for (int i = 0; i < 28; i++)
+                //{
+                //    Console.Write(C[0][i]);
+                //    if ((i + 1) % 7 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //}
+                //Console.WriteLine();
+
+                //Console.WriteLine("Permuted Key Right halve in Binary: ");
+                //for (int i = 0; i < 28; i++)
+                //{
+                //    Console.Write(D[0][i]);
+                //    if ((i + 1) % 7 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //}
+            }
+
+                // Shift sequence for Cn
+                for (int i = 1; i < key_shift_sizes.Length; i++)
+                {
+                    LeftShift(C[i], C[i - 1], key_shift_sizes[i]);
+                }
+                //Shift sequence for Dn
+                for (int i = 1; i < key_shift_sizes.Length; i++)
+                {
+                    LeftShift(D[i], D[i - 1], key_shift_sizes[i]);
+                }
+
+                //formation of CnDn
+                for (int i = 0; i < 17; i++)
+                {
+                    KCD[i] = C[i].ToList().Concat(D[i].ToList()).ToArray();
+                }
+
+                //CnDn -> Kn by Permutation
+                for (int i = 1; i < 17; i++)
+                {
+                    for (int j = 0; j < 48; j++)
+                    {
+                        K[i][j] = KCD[i][sub_key_permutation[j] - 1];
+                    }
+                }
+
+
+                //Step -2 
+                L[0] = permuted_message.Take(permuted_message.Length / 2).ToArray();
+                R[0] = permuted_message.Skip(permuted_message.Length / 2).ToArray();
+                for (int i = 1; i <= 16; i++)
+                {
+                    for (int j = 0; j < 32; j++)
+                    {
+                        L[i][j] = R[i - 1][j];
+                        R[i][j] = L[i - 1][j] ^ (sboxfunc(R[i - 1], K[17-i]))[j];
+                    }
+                } //sbox func
+
+                int[] final_RL = new int[64];
+                Array.Copy(R[16], 0, final_RL, 0, 32);
+                Array.Copy(L[16], 0, final_RL, 32, 32);
+                {//for (int i = 0; i < 64; i++)
+                 //{
+                 //    Console.Write(final_RL[i]);
+                 //    if ((i + 1) % 8 == 0)
+                 //        Console.Write(" ");
+                 //}
+                }
+                for (int i = 0; i < 64; i++)
+                {
+                    final_permutation[i] = final_RL[end_permutation[i] - 1];
+                }
+                {
+                    //Console.WriteLine("\n----------\nEncrypted Message in Binary :\n");
+                    //for (int i = 0; i < 64; i++)
+                    //{
+                    //    Console.Write(final_permutation[i]);
+                    //    if ((i + 1) % 8 == 0)
+                    //        Console.Write(" ");
+                    //}
+                }
+                string result = string.Join("", final_permutation);
+                string hex = String.Format("{0:X2}", Convert.ToInt64(result, 2));
+                return hex;
+                {
+                    ////Display Permuted sub key in Binary(48 Bits)
+                    //Console.WriteLine("Permuted sub Key in Binary: ");
+                    //for (int i = 0; i < 48; i++)
+                    //{
+                    //    Console.Write(K[15][i]);
+                    //    if ((i + 1) % 6 == 0)
+                    //    {
+                    //        Console.Write(" ");
+                    //    }
+                    //    if ((i + 1) % 24 == 0)
+                    //    {
+                    //        Console.WriteLine();
+                    //    }
+                    //}
+
+                    ////Display Permuted key in Binary(56 Bits)
+                    //Console.WriteLine("Permuted Key in Binary: ");
+                    //for (int i = 0; i < 56; i++)
+                    //{
+                    //    Console.Write(KCD[15][i]);
+                    //    if ((i + 1) % 7 == 0)
+                    //    {
+                    //        Console.Write(" ");
+                    //    }
+                    //    if ((i + 1) % 28 == 0)
+                    //    {
+                    //        Console.WriteLine();
+                    //    }
+                    //}
+                    //Console.WriteLine();
+                    //Console.WriteLine("Permuted Key Left halve C1 in Binary: ");
+                    //for (int i = 0; i < 28; i++)
+                    //{
+                    //    Console.Write(D[11][i]);
+                    //    if ((i + 1) % 7 == 0)
+                    //    {
+                    //        Console.Write(" ");
+                    //    }
+                    //}
+                }
+            }
+        public static string Enc_des(string mess, string key)
+        {
+            int[] permuted_message = new int[64];
+            int[] final_permutation = new int[64];
+
+            // Keys
+            int[][] KCD = new int[17][];
+            for (int i = 0; i < 17; i++)
+            {
+                KCD[i] = new int[56];
+            }
+            //Key division into two halves and subsequent shifts
+            int[][] C = new int[17][];
+            for (int i = 0; i < 17; i++)
+            {
+                C[i] = new int[28];
+            }
+            int[][] D = new int[17][];
+            for (int i = 0; i < 17; i++)
+            {
+                D[i] = new int[28];
+            }
+            //Kns
+            int[][] K = new int[17][];
+            for (int i = 0; i < 17; i++)
+            {
+                K[i] = new int[48];
+            }
+
+            //Message division 
+            //Ln
+            int[][] L = new int[17][];
+            for (int i = 0; i < 17; i++)
+            {
+                L[i] = new int[32];
+            }
+            //Rn
+            int[][] R = new int[17][];
+            for (int i = 0; i < 17; i++)
+            {
+                R[i] = new int[32];
+            }
+
+
+            //permutation of primary_key formula 
+            int[] key_permutation = new int[] { 57, 49, 41, 33, 25, 17, 9,
+                                   1, 58, 50, 42, 34, 26, 18,
+                                   10, 2, 59, 51, 43, 35, 27,           //Converts 64 bit key to 56 bit key 
+                                   19, 11, 3, 60, 52, 44, 36,
+                                   63, 55, 47, 39, 31, 23, 15,
+                                   7, 62, 54, 46, 38, 30, 22,
+                                   14, 6, 61, 53, 45, 37, 29,
+                                   21, 13, 5, 28, 20, 12, 4 };
+
+            //shift sizes
+            int[] key_shift_sizes = new int[] { 0, 1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1 };
+
+
+            //permutation of sub key formula
+            int[] sub_key_permutation = new int[]{
+                                    14, 17, 11, 24, 1, 5,
+                                    3, 28, 15, 6, 21, 10,
+                                    23, 19, 12,  4, 26, 8,
+                                    16, 7, 27, 20, 13, 2,               //Converts 56 bit CnDn to 48 bit Kn
+                                    41, 52, 31, 37, 47, 55,
+                                    30, 40, 51, 45, 33, 48,
+                                    44, 49, 39, 56, 34, 53,
+                                    46, 42, 50, 36, 29, 32 };
+
+            //permutation of message formula
+            int[] message_permutation = new int[]{
+                             58, 50, 42, 34, 26, 18, 10, 2,
+                             60, 52, 44, 36, 28, 20, 12, 4,
+                             62, 54, 46, 38, 30, 22, 14, 6,
+                             64, 56, 48, 40, 32, 24, 16, 8,
+                             57, 49, 41, 33, 25, 17,  9, 1,             //64 bit to 64 bit msg
+                             59, 51, 43, 35, 27, 19, 11, 3,
+                             61, 53, 45, 37, 29, 21, 13, 5,
+                             63, 55, 47, 39, 31, 23, 15, 7 };
+
+            //Final permutation formula
+            int[] end_permutation = new int[]{
+                         40,  8, 48, 16, 56, 24, 64, 32,
+                         39,  7, 47, 15, 55, 23, 63, 31,
+                         38,  6, 46, 14, 54, 22, 62, 30,        //Output is encoded msg
+                         37,  5, 45, 13, 53, 21, 61, 29,
+                         36,  4, 44, 12, 52, 20, 60, 28,
+                         35,  3, 43, 11, 51, 19, 59, 27,
+                         34,  2, 42, 10, 50, 18, 58, 26,
+                         33,  1, 41,  9, 49, 17, 57, 25 };
+
+
+
+            //Conversion of Hex to binary of msg
+            var msg_to_binary = String.Join("", mess.Select(x => Convert.ToString(Convert.ToInt32(x + "", 16), 2).PadLeft(4, '0')));
+            //Conversion to int_Array
+            var msg_binary_toarray = msg_to_binary.Select(c => c - '0').ToArray();
+
+            //Permutation of msg 
+            for (int i = 0; i < 64; i++)
+            {
+                permuted_message[i] = msg_binary_toarray[message_permutation[i] - 1];
+            }
+            { 
+            ////Display Original Message in Binary(64 bits)
+            //Console.WriteLine("Original Message in Binary: ");
+            //for (int i = 0; i < 64; i++)
+            //{
+            //    Console.Write(msg_binary_toarray[i]);
+            //    if ((i + 1) % 8 == 0)
+            //    {
+            //        Console.Write(" ");
+            //    }
+            //    if ((i + 1) % 32 == 0)
+            //    {
+            //        Console.WriteLine();
+            //    }
+            //}
+
+            ////Display Permuted msg in Binary(64 Bits)
+            //Console.WriteLine("Permuted msg in Binary: ");
+            //for (int i = 0; i < 64; i++)
+            //{
+            //    Console.Write(permuted_message[i]);
+            //    if ((i + 1) % 8 == 0)
+            //    {
+            //        Console.Write(" ");
+            //    }
+            //    if ((i + 1) % 32 == 0)
+            //    {
+            //        Console.WriteLine();
+            //    }
+            //}
+
+        }
+            //Conversion of Hex to binary of key
+            var key_to_binary = String.Join("", key.Select(x => Convert.ToString(Convert.ToInt32(x + "", 16), 2).PadLeft(4, '0')));
+            //Conversion to int_Array
+            var key_binary_toarray = key_to_binary.Select(c => c - '0').ToArray();
+
+            //Permutation of key
+            for (int i = 0; i < 56; i++)
+            {
+                KCD[0][i] = key_binary_toarray[key_permutation[i] - 1];
+            }
+            Console.WriteLine();
+            {
+                ////Display original key in binary(64 Bits)
+                //Console.WriteLine("Original Key in Binary: ");
+                //for (int i = 0; i < 64; i++)
+                //{
+                //    Console.Write(key_binary_toarray[i]);
+                //    if ((i + 1) % 8 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //    if ((i + 1) % 32 == 0)
+                //    {
+                //        Console.WriteLine();
+                //    }
+                //}
+
+                ////Display Permuted key in Binary(56 Bits)
+                //Console.WriteLine("Permuted Key in Binary: ");
+                //for (int i = 0; i < 56; i++)
+                //{
+                //    Console.Write(KCD[0][i]);
+                //    if ((i + 1) % 7 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //    if ((i + 1) % 28 == 0)
+                //    {
+                //        Console.WriteLine();
+                //    }
+                //}
+            }
+            //Key permutations
+            C[0] = KCD[0].Take(KCD[0].Length / 2).ToArray();
+            D[0] = KCD[0].Skip(KCD[0].Length / 2).ToArray();
+            {
+                //Console.WriteLine("Permuted Key Left halve in Binary: ");
+                //for (int i = 0; i < 28; i++)
+                //{
+                //    Console.Write(C[0][i]);
+                //    if ((i + 1) % 7 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //}
+                //Console.WriteLine();
+
+                //Console.WriteLine("Permuted Key Right halve in Binary: ");
+                //for (int i = 0; i < 28; i++)
+                //{
+                //    Console.Write(D[0][i]);
+                //    if ((i + 1) % 7 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //}
+
+            }
+            // Shift sequence for Cn
+            for (int i = 1; i < key_shift_sizes.Length; i++)
+            {
+                LeftShift(C[i], C[i - 1], key_shift_sizes[i]);
+            }
+            //Shift sequence for Dn
+            for (int i = 1; i < key_shift_sizes.Length; i++)
+            {
+                LeftShift(D[i], D[i - 1], key_shift_sizes[i]);
+            }
+
+            //formation of CnDn
+            for (int i = 0; i < 17; i++)
+            {
+                KCD[i] = C[i].ToList().Concat(D[i].ToList()).ToArray();
+            }
+
+            //CnDn -> Kn by Permutation
+            for (int i = 1; i < 17; i++)
+            {
+                for (int j = 0; j < 48; j++)
+                {
+                    K[i][j] = KCD[i][sub_key_permutation[j] - 1];
+                }
+            }
+
+
+            //Step -2 
+            L[0] = permuted_message.Take(permuted_message.Length / 2).ToArray();
+            R[0] = permuted_message.Skip(permuted_message.Length / 2).ToArray();
+            for (int i = 1; i <= 16; i++)
+            {
+                for (int j = 0; j < 32; j++)
+                {
+                    L[i][j] = R[i - 1][j];
+                    R[i][j] = L[i - 1][j] ^ (sboxfunc(R[i - 1], K[i]))[j];
+                }
+            } //sbox func
+
+            int[] final_RL = new int[64];
+            Array.Copy(R[16], 0, final_RL, 0, 32);
+            Array.Copy(L[16], 0, final_RL, 32, 32);
+            {//for (int i = 0; i < 64; i++)
+             //{
+             //    Console.Write(final_RL[i]);
+             //    if ((i + 1) % 8 == 0)
+             //        Console.Write(" ");
+             //}
+            }
+            for (int i = 0; i < 64; i++)
+            {
+                final_permutation[i] = final_RL[end_permutation[i] - 1];
+            }
+            {
+                //Console.WriteLine("\n----------\nEncrypted Message in Binary :\n");
+                //for (int i = 0; i < 64; i++)
+                //{
+                //    Console.Write(final_permutation[i]);
+                //    if ((i + 1) % 8 == 0)
+                //        Console.Write(" ");
+                //}
+            }
+            string result = string.Join("", final_permutation);
+            string hex = String.Format("{0:X2}", Convert.ToInt64(result, 2));
+            return hex;
+            {
+                ////Display Permuted sub key in Binary(48 Bits)
+                //Console.WriteLine("Permuted sub Key in Binary: ");
+                //for (int i = 0; i < 48; i++)
+                //{
+                //    Console.Write(K[15][i]);
+                //    if ((i + 1) % 6 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //    if ((i + 1) % 24 == 0)
+                //    {
+                //        Console.WriteLine();
+                //    }
+                //}
+
+                ////Display Permuted key in Binary(56 Bits)
+                //Console.WriteLine("Permuted Key in Binary: ");
+                //for (int i = 0; i < 56; i++)
+                //{
+                //    Console.Write(KCD[15][i]);
+                //    if ((i + 1) % 7 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //    if ((i + 1) % 28 == 0)
+                //    {
+                //        Console.WriteLine();
+                //    }
+                //}
+                //Console.WriteLine();
+                //Console.WriteLine("Permuted Key Left halve C1 in Binary: ");
+                //for (int i = 0; i < 28; i++)
+                //{
+                //    Console.Write(D[11][i]);
+                //    if ((i + 1) % 7 == 0)
+                //    {
+                //        Console.Write(" ");
+                //    }
+                //}
+            }
+        }
+        //public static void LeftShift(int[] al, int[] ar, int shift)
+        //{
+        //    int ind = 0;
+        //    for (int i = shift; i < ar.Length; i++)
+        //    {
+        //        al[ind] = ar[i];
+        //        ind++;
+
+        //    }
+
+        //    for (int i = 0; i < shift; i++)
+        //    {
+        //        al[ind] = ar[i];
+        //        ind++;
+        //    }
+
+
+        //}
+        public static void LeftShift(int[] al, int[] ar, int shift)
+        {
+            shift = ar.Length - shift % ar.Length; // Remove this Line to make this a right shift 
+            for (int i = 0; i < ar.Length; i++)
+                al[(i + shift) % al.Length] = ar[i];
+        }
+        public static int[] sboxfunc(int[] r, int[] k)
+        {
+            int[] func_perm = new int[32];
+            //permutation of S - box output formula
+            int[] function_permutation = new int[]{
+                                  16,  7, 20, 21,
+                                  29, 12, 28, 17,
+                                  1, 15, 23, 26,
+                                  5, 18, 31, 10,
+                                  2,  8, 24, 14,   //f(Rn-1,kn)
+                                  32, 27,  3,  9,
+                                  19, 13, 30,  6,
+                                  22, 11,  4, 25 };
+            int[] Er = new int[k.Length];
+            int[] k_xor_Er = new int[k.Length];
+            //Permutation of msg Rn halve bits formula
+            int[] e_bit_selection = new int[]  {
+                            32, 1, 2, 3, 4, 5,
+                            4, 5, 6, 7, 8, 9,
+                            8, 9, 10, 11, 12, 13,
+                            12, 13, 14, 15, 16, 17,                 //32 bits to 48 bits Rn -> E(Rn)
+                            16, 17, 18, 19, 20, 21,
+                            20, 21, 22, 23, 24, 25,
+                            24, 25, 26, 27, 28, 29,
+                            28, 29, 30, 31, 32, 1 };
+
+            for (int j = 0; j < 48; j++)
+            {
+                Er[j] = r[e_bit_selection[j] - 1];
+            }
+            for (int i = 0; i < 48; i++)
+            {
+                k_xor_Er[i] = Er[i] ^ k[i];
+            }
+            var sboxed_array = sbox(k_xor_Er);
+            { //Console.WriteLine();
+              //for (int i = 0; i < sboxed_array.Length; i++)
+              //{
+              //    Console.Write(sboxed_array[i]);
+              //}
+            }
+            // Final permutation to be done here in this function
+            for (int i = 0; i < 32; i++)
+            {
+                func_perm[i] = sboxed_array[function_permutation[i] - 1];
+            }
+            return func_perm;
+            //Console.WriteLine();
+            { //for (int i = 0; i < 32; i++)
+            //{
+            //    Console.Write(func_perm[i]);
+            //    if ((i + 1) % 4 == 0)
+            //        Console.Write(" ");
+            //}
+             
+            ////Display Permuted key in Binary(56 Bits)
+            //Console.WriteLine();
+            ////Display Permuted key in Binary(56 Bits)
+            //Console.WriteLine();
+            //Console.WriteLine("Er in Binary: ");
+            //for (int i = 0; i < 48; i++)
+            //{
+            //    Console.Write(k_xor_Er[i]);
+            //    if ((i + 1) % 6 == 0)
+            //    {
+            //        Console.Write(" ");
+            //    }
+            //}
+        }
+    }
+        public static int[] sbox(int[] kxorer)
+        {
+            int[][] B_bits = new int[9][];
+            for (int i = 1; i < 9; i++)
+            {
+                B_bits[i] = new int[6];
+            }
+            for (int i = 0; i < 8; i++)
+            {
+                Array.Copy(kxorer, 6*i , B_bits[i+1], 0, 6);
+            }
+            { //Array.Copy(kxorer, 0, B_bits[1], 0, 6);
+              //Array.Copy(kxorer, 6, B_bits[2], 0, 6);
+              //Array.Copy(kxorer, 12, B_bits[3], 0, 6);
+              //Array.Copy(kxorer, 18, B_bits[4], 0, 6);
+              //Array.Copy(kxorer, 24, B_bits[5], 0, 6);
+              //Array.Copy(kxorer, 30, B_bits[6], 0, 6);
+              //Array.Copy(kxorer, 36, B_bits[7], 0, 6);
+              //Array.Copy(kxorer, 42, B_bits[8], 0, 6);
+              //int r, c;
+              //r = Row_det(B_bits[1]);
+              //c = Column_det(B_bits[1]);
+
+                //Console.WriteLine();
+                //Console.WriteLine();
+                //Console.WriteLine();
+                //Console.WriteLine($"r = {r}  and c = {c}");
+                ////for (int i = 0; i < 6; i++)
+                //{
+                //    Console.Write(B_bits[1][i] + " ");
+                //}
+            }
+            var s1 = S_box_1(B_bits[1]);
+            var s2 = S_box_2(B_bits[2]);
+            var s3 = S_box_3(B_bits[3]);
+            var s4 = S_box_4(B_bits[4]);
+            var s5 = S_box_5(B_bits[5]);
+            var s6 = S_box_6(B_bits[6]);
+            var s7 = S_box_7(B_bits[7]);
+            var s8 = S_box_8(B_bits[8]);
+            var S = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8;
+         //   Console.WriteLine("\n" +S);
+            var S_array = S.Select(c => (int)(c - '0')).ToArray();
+            { //for (int i = 0; i < S_array.Length; i++)
+              //{
+              //    Console.Write(S_array[i]);
+              //    if ((i+1) % 4 == 0)
+              //    { Console.Write(" "); }
+              //}
+            }
+            return S_array;
+
+        }
+        public static int Column_det(int[] arr)
+        {
+            int[] copy_arr = new int[4];
+            //Console.WriteLine();
+            //Console.WriteLine();
+            //for (int i = 0; i < arr.Length; i++)
+            //{
+            //    Console.Write(arr[i] + " ");
+            //}
+            //Console.WriteLine();
+            //Console.WriteLine();
+            Array.Copy(arr, 1, copy_arr, 0, 4);
+            copy_arr = copy_arr.Reverse().ToArray();
+            //for (int i = 0; i < 4; i++)
+            //{
+            //    Console.Write(copy_arr[i] + " ");
+            //}
+            //Console.WriteLine();
+            double res = 0;
+            for (int i = 0; i < copy_arr.Length; i++)
+            {
+                res = res + (Math.Pow(2, i) * copy_arr[i]);
+            }
+            //  //int res = Convert.ToInt32(,2);
+            //Console.WriteLine(res);
+            return (int)res;
+        }
+        public static int Row_det(int[] arr)
+        {
+
+            if (arr[0] == 0 && arr[arr.Length - 1] == 0)
+            { return 0; }
+            else if (arr[0] == 0 && arr[arr.Length - 1] == 1)
+            { return 1; }
+            else if (arr[0] == 1 && arr[arr.Length - 1] == 0)
+            { return 2; }
+            else
+            { return 3; }
+
+        }
+        public static string S_box_1(int[] arr)
+        {
+            int row, column;
+            row = Row_det(arr);
+            column = Column_det(arr);
+            //S- box 1
+            int[,] s_box_array_a1 = new int[,]{
+                  { 14, 4, 13, 1, 2, 15, 11, 8, 3, 10, 6, 12, 5, 9, 0, 7, },
+                  { 0, 15, 7, 4, 14, 2, 13, 1, 10, 6, 12, 11, 9, 5, 3, 8, },                 //Converts 6 bit to 4 bit
+                  { 4, 1, 14, 8, 13, 6, 2, 11, 15, 12, 9, 7, 3, 10, 5, 0, },
+                  { 15, 12, 8, 2, 4, 9, 1, 7, 5, 11, 3, 14, 10, 0, 6, 13 } };
+            int value = s_box_array_a1[row, column];
+            var value_bin = Convert.ToString(value, 2).PadLeft(4,'0');
+            //Console.WriteLine(value_bin);
+            return value_bin;
+           
+        }
+        public static string S_box_2(int[] arr)
+        {
+            int[] res = new int[4];
+            int row, column;
+            row = Row_det(arr);
+            column = Column_det(arr);
+            //S- Box 2
+            int[,] s_box_array_a2 = new int[,] {
+                  { 15, 1, 8, 14, 6, 11, 3, 4, 9, 7, 2, 13, 12, 0, 5, 10,},
+                  { 3, 13, 4, 7, 15, 2, 8, 14, 12, 0, 1, 10, 6, 9, 11, 5,},
+                  { 0, 14, 7, 11, 10, 4, 13, 1, 5, 8, 12, 6, 9, 3, 2, 15,},                 //Converts 6 bit to 4 bit
+                  { 13, 8, 10, 1, 3, 15, 4, 2, 11, 6, 7, 12, 0, 5, 14, 9} };
+            int value = s_box_array_a2[row, column];
+            var value_bin = Convert.ToString(value, 2).PadLeft(4, '0');
+           // Console.WriteLine(value_bin);
+            return value_bin;
+        }
+        public static string S_box_3(int[] arr)
+        {
+            int[] res = new int[4];
+            int row, column;
+            row = Row_det(arr);
+            column = Column_det(arr);
+            //S- Box 3
+            int[,] s_box_array_a3 = new int[,]{
+                  { 10, 0, 9, 14, 6, 3, 15, 5, 1, 13, 12, 7, 11, 4, 2, 8, },
+                  { 13, 7, 0, 9, 3, 4, 6, 10, 2, 8, 5, 14, 12, 11, 15, 1, },
+                  { 13, 6, 4, 9, 8, 15, 3, 0, 11, 1, 2, 12, 5, 10, 14, 7, },                //Converts 6 bit to 4 bit
+                  { 1, 10, 13, 0, 6, 9, 8, 7, 4, 15, 14, 3, 11, 5, 2, 12 } };
+            int value = s_box_array_a3[row, column];
+            var value_bin = Convert.ToString(value, 2).PadLeft(4, '0');
+           // Console.WriteLine(value_bin);
+            return value_bin;
+        }
+        public static string S_box_4(int[] arr)
+        {
+            int[] res = new int[4];
+            int row, column;
+            row = Row_det(arr);
+            column = Column_det(arr);
+            //S- Box 4
+            int[,] s_box_array_a4 = new int[,]{
+                  { 7, 13, 14,  3,  0,  6,  9, 10,  1,  2,  8,  5, 11, 12,  4, 15, },
+                  { 13,  8, 11,  5,  6, 15,  0,  3,  4,  7,  2, 12,  1, 10, 14,  9, },
+                  { 10,  6,  9,  0, 12, 11,  7, 13, 15,  1,  3, 14,  5,  2,  8,  4, },       //Converts 6 bit to 4 bit
+                  { 3, 15,  0,  6, 10,  1, 13,  8,  9,  4,  5, 11, 12,  7,  2, 14 } };
+            int value = s_box_array_a4[row, column];
+            var value_bin = Convert.ToString(value, 2).PadLeft(4, '0');
+            //Console.WriteLine(value_bin);
+            return value_bin;
+        }
+        public static string S_box_5(int[] arr)
+        {
+            int[] res = new int[4];
+            int row, column;
+            row = Row_det(arr);
+            column = Column_det(arr);
+            //S- Box 5
+            int[,] s_box_array_a5 = new int[,]{
+                  { 2, 12,  4,  1,  7, 10, 11,  6,  8,  5,  3, 15, 13,  0, 14,  9, },
+                  { 14, 11,  2, 12,  4,  7, 13,  1,  5,  0, 15, 10,  3,  9,  8,  6, },
+                  { 4,  2,  1, 11, 10, 13,  7,  8, 15,  9, 12,  5,  6,  3,  0, 14, },    //Converts 6 bit to 4 bit
+                  { 11,  8, 12,  7,  1, 14,  2, 13,  6, 15,  0,  9, 10,  4,  5,  3 } };
+            int value = s_box_array_a5[row, column];
+            var value_bin = Convert.ToString(value, 2).PadLeft(4, '0');
+           // Console.WriteLine(value_bin);
+            return value_bin;
+        }
+        public static string S_box_6(int[] arr)
+        {
+            int[] res = new int[4];
+            int row, column;
+            row = Row_det(arr);
+            column = Column_det(arr);
+            //S- Box 6
+            int[,] s_box_array_a6 = new int[,]{
+                  { 12,  1, 10, 15,  9,  2,  6,  8,  0, 13,  3,  4, 14,  7,  5, 11, },
+                  { 10, 15,  4,  2,  7, 12,  9,  5,  6,  1, 13, 14,  0, 11,  3,  8, },
+                  { 9, 14, 15,  5,  2,  8, 12,  3,  7,  0,  4, 10,  1, 13, 11,  6, },    //Converts 6 bit to 4 bit
+                  { 4,  3,  2, 12,  9,  5, 15, 10, 11, 14,  1,  7,  6,  0,  8, 13 } };
+            int value = s_box_array_a6[row, column];
+            var value_bin = Convert.ToString(value, 2).PadLeft(4, '0');
+           // Console.WriteLine(value_bin);
+            return value_bin;
+        }
+        public static string S_box_7(int[] arr)
+        {
+            int[] res = new int[4];
+            int row, column;
+            row = Row_det(arr);
+            column = Column_det(arr);
+            //S- Box 7
+            int[,] s_box_array_a7 = new int[,]{
+                  { 4, 11,  2, 14, 15,  0,  8, 13,  3, 12,  9,  7,  5, 10,  6,  1, },
+                  { 13,  0, 11,  7,  4,  9,  1, 10, 14,  3,  5, 12,  2, 15,  8,  6, },
+                  { 1,  4, 11, 13, 12,  3,  7, 14, 10, 15,  6,  8,  0,  5,  9,  2, },    //Converts 6 bit to 4 bit
+                  { 6, 11, 13,  8,  1,  4, 10,  7,  9,  5,  0, 15, 14,  2,  3, 12 } };
+            int value = s_box_array_a7[row, column];
+            var value_bin = Convert.ToString(value, 2).PadLeft(4, '0');
+            //Console.WriteLine(value_bin);
+            return value_bin;
+        }
+        public static string S_box_8(int[] arr)
+        {
+            int[] res = new int[4];
+            int row, column;
+            row = Row_det(arr);
+            column = Column_det(arr);
+            //S- Box 8
+            int[,] s_box_array_a8 = new int[,]{
+                 { 13,  2,  8,  4,  6, 15, 11,  1, 10,  9,  3, 14,  5,  0, 12,  7, },
+                  { 1, 15, 13,  8, 10,  3,  7,  4, 12,  5,  6, 11,  0, 14,  9,  2, },
+                  { 7, 11,  4,  1,  9, 12, 14,  2,  0,  6, 10, 13, 15,  3,  5,  8, },      //Converts 6 bit to 4 bit
+                  { 2,  1, 14,  7,  4, 10,  8, 13, 15, 12,  9,  0,  3,  5,  6, 11 } };
+            int value = s_box_array_a8[row, column];
+            var value_bin = Convert.ToString(value, 2).PadLeft(4, '0');
+            //Console.WriteLine(value_bin);
+            return value_bin;
+        }
+    }
+}
